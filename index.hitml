@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finance Ops Command Center — Expense Receipt Agent (v1)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #0f172a; color: #f8fafc; padding: 20px; min-height: 100vh; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    
+    header { background: #1e293b; border: 1px solid #334155; padding: 18px 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px; }
+    .badge-top { background: #2563eb; color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; }
+    h1 { font-size: 19px; font-weight: 800; margin-top: 6px; color: #ffffff; }
+    p.sub { font-size: 12.5px; color: #94a3b8; margin-top: 3px; }
+    
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+    @media (max-width: 800px) { .metrics { grid-template-columns: 1fr 1fr; } }
+    .metric-card { background: #1e293b; border: 1px solid #334155; padding: 14px; border-radius: 10px; }
+    .metric-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #94a3b8; }
+    .metric-val { font-size: 22px; font-weight: 800; color: #fff; margin-top: 4px; }
+    .metric-desc { font-size: 11px; color: #94a3b8; margin-top: 3px; }
+
+    .grid { display: grid; grid-template-columns: 5fr 7fr; gap: 18px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+    .panel { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 18px; }
+    .panel-title { font-size: 13.5px; font-weight: 700; color: #fff; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 10px; }
+
+    .case-item { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; color: #f8fafc; transition: all 0.15s; }
+    .case-item:hover { border-color: #60a5fa; background: #162032; }
+    .case-item.active { border: 2px solid #3b82f6; background: #1e293b; }
+    .case-left { display: flex; gap: 12px; align-items: center; }
+    .case-id { background: #334155; color: #f8fafc; font-weight: 700; font-size: 11.5px; width: 40px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; flex-shrink: 0; }
+    .case-name { font-weight: 700; font-size: 13px; color: #fff; }
+    .case-meta { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    
+    .badge { font-size: 10px; font-weight: 700; padding: 4px 9px; border-radius: 20px; text-transform: uppercase; border: 1px solid transparent; white-space: nowrap; }
+    .b-pending { background: #1e293b; color: #93c5fd; border-color: #3b82f6; }
+    .b-exempt { background: #334155; color: #e2e8f0; border-color: #64748b; }
+    .b-needs { background: #451a03; color: #fde047; border-color: #b45309; }
+    .b-verified { background: #022c22; color: #6ee7b7; border-color: #059669; }
+    .b-unsure { background: #3b0764; color: #e9d5ff; border-color: #7e22ce; }
+
+    .insp-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #334155; padding-bottom: 12px; margin-bottom: 14px; }
+    .insp-box { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 14px; margin-bottom: 14px; }
+    .insp-box h4 { font-size: 11px; text-transform: uppercase; color: #94a3b8; margin-bottom: 10px; font-weight: 700; letter-spacing: 0.04em; }
+    .box-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; margin-bottom: 12px; }
+    .sub-field { background: #1e293b; padding: 9px 11px; border-radius: 6px; border: 1px solid #334155; }
+    .sub-field span { display: block; color: #94a3b8; font-size: 10.5px; margin-bottom: 3px; }
+    .sub-field strong { color: #fff; font-size: 12.5px; }
+    
+    .audit-text { font-size: 12.5px; color: #e2e8f0; line-height: 1.45; background: #1e293b; padding: 10px 12px; border-radius: 6px; border-left: 3px solid #3b82f6; }
+    .slack-box { background: #2e1065; border: 1px solid #7e22ce; padding: 12px; border-radius: 8px; font-size: 12.5px; color: #f3e8ff; line-height: 1.45; margin-top: 8px; }
+    
+    .btn { background: #2563eb; color: #fff; border: none; padding: 11px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 12.5px; width: 100%; text-align: center; }
+    .btn:hover { background: #1d4ed8; }
+    .btn.emerald { background: #059669; }
+    .btn.emerald:hover { background: #047857; }
+    .btn.amber { background: #d97706; }
+    .btn.amber:hover { background: #b45309; }
+    .btn-reset { background: #334155; color: #e2e8f0; border: 1px solid #475569; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn-reset:hover { background: #475569; }
+
+    #toast { position: fixed; top: 20px; right: 20px; background: #059669; color: #fff; padding: 13px 20px; border-radius: 10px; font-size: 13px; font-weight: 700; box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: none; z-index: 9999; border: 1px solid #34d399; }
+  </style>
+</head>
+<body>
+
+  <!-- Toast Banner -->
+  <div id="toast">💬 Slack message sent!</div>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div>
+        <span class="badge-top">v1.0 Live Agent Prototype</span>
+        <h1>Finance Ops: Automated Receipt Verification Dashboard</h1>
+        <p class="sub">Single Job: Verify presence, legibility &amp; amount match for claims &gt;$30 | Zero autonomous approvals</p>
+      </div>
+      <div>
+        <button class="btn-reset" onclick="resetAllCases()">↺ Reset All 6 Cases</button>
+      </div>
+    </header>
+
+    <!-- Metrics -->
+    <div class="metrics">
+      <div class="metric-card">
+        <div class="metric-title">Cases Evaluated</div>
+        <div class="metric-val" id="mScannedCount">0 / 6</div>
+        <div class="metric-desc">Click each button below to run</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Verified / Exempt</div>
+        <div class="metric-val" id="mVerified" style="color:#94a3b8">0</div>
+        <div class="metric-desc">Ready for Finance approval</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Chasing (Slack Sent)</div>
+        <div class="metric-val" id="mNeeds" style="color:#94a3b8">0</div>
+        <div class="metric-desc">Set to "needs info" + DM sent</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Escalated (Unsure)</div>
+        <div class="metric-val" id="mUnsure" style="color:#94a3b8">0</div>
+        <div class="metric-desc">Routed to Finance Ops review</div>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid">
+      
+      <!-- Left: 6 HARDCODED CASE BUTTONS -->
+      <div class="panel">
+        <div class="panel-title">
+          <span>6 Sample Claims — Click Any Button to Run Agent</span>
+          <span style="font-size:11px; color:#93c5fd;">Individual Simulation</span>
+        </div>
+
+        <!-- Case 1 Button -->
+        <button class="case-item" id="btn-1041" onclick="runSingleCase('1041')">
+          <div class="case-left">
+            <div class="case-id">#1041</div>
+            <div>
+              <div class="case-name">Priya Nair — $18.50 (Team Meals)</div>
+              <div class="case-meta">Case 1: Under $30 Policy Threshold (No Receipt)</div>
+            </div>
+          </div>
+          <span class="badge b-pending" id="badge-1041">▶ Run Case</span>
+        </button>
+
+        <!-- Case 2 Button -->
+        <button class="case-item" id="btn-1042" onclick="runSingleCase('1042')">
+          <div class="case-left">
+            <div class="case-id">#1042</div>
+            <div>
+              <div class="case-name">Marcus Vance — $54.00 (Client Taxi)</div>
+              <div class="case-meta">Case 2: Missing Receipt on Claim &gt;$30</div>
+            </div>
+          </div>
+          <span class="badge b-pending" id="badge-1042">▶ Run Case</span>
+        </button>
+
+        <!-- Case 3 Button -->
+        <button class="case-item" id="btn-1043" onclick="runSingleCase('1043')">
+          <div class="case-left">
+            <div class="case-id">#1043</div>
+            <div>
+              <div class="case-name">Elena Rostova — $45.60 (Client Lunch)</div>
+              <div class="case-meta">Case 3: Clean Receipt Matches ($38 + Tax + Tip)</div>
+            </div>
+          </div>
+          <span class="badge b-pending" id="badge-1043">▶ Run Case</span>
+        </button>
+
+        <!-- Case 4 Button -->
+        <button class="case-item" id="btn-1044" onclick="runSingleCase('1044')">
+          <div class="case-left">
+            <div class="case-id">#1044</div>
+            <div>
+              <div class="case-name">Devon Brooks — $68.00 (Hotel Parking)</div>
+              <div class="case-meta">Case 4 [MESSY]: Blurry / Unreadable Thermal Photo</div>
+            </div>
+          </div>
+          <span class="badge b-pending" id="badge-1044">▶ Run Case</span>
+        </button>
+
+        <!-- Case 5 Button -->
+        <button class="case-item" id="btn-1045" onclick="runSingleCase('1045')">
+          <div class="case-left">
+            <div class="case-id">#1045</div>
+            <div>
+              <div class="case-name">Samira Patel — $84.50 (Team Dinner)</div>
+              <div class="case-meta">Case 5 [MESSY]: Amount Mismatch ($84.50 vs $48.50)</div>
+            </div>
+          </div>
+          <span class="badge b-pending" id="badge-1045">▶ Run Case</span>
+        </button>
+
+        <!-- Case 6 Button -->
+        <button class="case-item" id="btn-1046" onclick="runSingleCase('1046')">
+          <div class="case-left">
+            <div class="case-id">#1046</div>
+            <div>
+              <div class="case-name">Liam O'Connor — $42.00 (Airport Taxi)</div>
+              <div class="case-meta">Case 6 [MESSY]: Handwritten EUR Slip (Unsure / Low Conf)</div>
+            </div>
+          </div>
+          <span class="badge b-pending" id="badge-1046">▶ Run Case</span>
+        </button>
+      </div>
+
+      <!-- Right: Inspector -->
+      <div class="panel" id="inspectorPanel">
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; padding:60px 20px;">
+          <div style="font-size:42px; margin-bottom:14px;">👈</div>
+          <h3 style="font-size:17px; font-weight:800; color:#fff; margin-bottom:8px;">Select Any Case on the Left to Run the Agent</h3>
+          <p style="font-size:13px; color:#94a3b8; max-width:380px; line-height:1.5;">
+            Each button on the left runs a single claim through the Expense Receipt Agent. You will see the receipt comparison, the status change, and the automated Slack DM notification when a receipt is missing, blurry, or mismatched.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+  var caseData = {
+    '1041': {
+      id: '1041', employee: 'Priya Nair', slackHandle: '@priya.nair', category: 'Team Meals',
+      claimed: '$18.50 USD', extracted: 'Not Required (<= $30)',
+      merchant: 'Blue Bottle Coffee', confidence: '100% (Policy Rule)',
+      badge: 'EXEMPT <= $30', badgeClass: 'b-exempt',
+      file: 'No file attached',
+      vision: 'Skipped LLM call ($0 cost) — Claim is under the $30 receipt policy threshold.',
+      action: 'Logged audit comment: [PASS: Under $30 policy threshold — no receipt required]. Left claim in Submitted queue for human approval.',
+      slackMsg: null, scanned: false, bucket: 'verified'
+    },
+    '1042': {
+      id: '1042', employee: 'Marcus Vance', slackHandle: '@marcus.vance', category: 'Client Taxi',
+      claimed: '$54.00 USD', extracted: 'MISSING FILE',
+      merchant: 'Unknown (No Receipt)', confidence: '100% (Rule Check)',
+      badge: 'NEEDS INFO', badgeClass: 'b-needs',
+      file: 'None Attached',
+      vision: 'Claim is over $30 ($54.00) and has no receipt photo or PDF attached.',
+      action: 'Updated claim status to "needs info". Added audit record on claim. Sent automated Slack DM #1 to @marcus.vance.',
+      slackMsg: 'Hi Marcus 👋 — Your $54.00 Client Taxi claim (#1042) is over $30 and requires a receipt. Please upload a photo or PDF of your receipt here: https://expenses.consark.internal/c/1042',
+      scanned: false, bucket: 'needs'
+    },
+    '1043': {
+      id: '1043', employee: 'Elena Rostova', slackHandle: '@elena.rostova', category: 'Client Lunch',
+      claimed: '$45.60 USD', extracted: '$45.60 USD (Matched)',
+      merchant: 'Bistro Moderne', confidence: '98%',
+      badge: 'RECEIPT VERIFIED', badgeClass: 'b-verified',
+      file: 'bistro_moderne_receipt.jpg',
+      vision: 'Legible receipt verified. Subtotal $38.00 + Tax $3.10 + Tip $4.50 = $45.60 matches claimed amount.',
+      action: 'Logged audit comment: [RECEIPT VERIFIED: Bistro Moderne, $45.60 matches claim]. Ready for human Manager/Finance approval.',
+      slackMsg: null, scanned: false, bucket: 'verified'
+    },
+    '1044': {
+      id: '1044', employee: 'Devon Brooks', slackHandle: '@devon.brooks', category: 'Hotel Parking',
+      claimed: '$68.00 USD', extracted: 'UNREADABLE (Blurry)',
+      merchant: 'Metro Garage (Faded)', confidence: '94%',
+      badge: 'NEEDS INFO', badgeClass: 'b-needs',
+      file: 'garage_blur_photo.jpg',
+      vision: 'Receipt photo is heavily motion-blurred and thermal ink digits are illegible. Agent refuses to guess numbers.',
+      action: 'Updated claim status to "needs info". Added audit comment recording blurry upload. Sent Slack DM #1 to @devon.brooks.',
+      slackMsg: 'Hi Devon 👋 — The receipt attached to your $68.00 Hotel Parking claim (#1044) is too blurry to read the total and date. Please upload a clearer photo or PDF here: https://expenses.consark.internal/c/1044',
+      scanned: false, bucket: 'needs'
+    },
+    '1045': {
+      id: '1045', employee: 'Samira Patel', slackHandle: '@samira.patel', category: 'Team Dinner',
+      claimed: '$84.50 USD', extracted: '$48.50 USD (Mismatch)',
+      merchant: 'Oak Steakhouse', confidence: '99%',
+      badge: 'NEEDS INFO', badgeClass: 'b-needs',
+      file: 'oak_steakhouse_receipt.pdf',
+      vision: 'Amount Mismatch Detected: Employee claimed $84.50, but legible PDF receipt shows total of $48.50 ($36.00 difference).',
+      action: 'Updated claim status to "needs info". Logged exact discrepancy ($84.50 vs $48.50) in audit trail. Sent Slack DM #1 to @samira.patel.',
+      slackMsg: 'Hi Samira 👋 — Quick check on your $84.50 Team Dinner claim (#1045): the attached Oak Steakhouse receipt shows a total of $48.50. Please update your claim amount to $48.50 or upload the matching receipt here: https://expenses.consark.internal/c/1045',
+      scanned: false, bucket: 'needs'
+    },
+    '1046': {
+      id: '1046', employee: "Liam O'Connor", slackHandle: '@liam.oconnor', category: 'Airport Taxi',
+      claimed: '$42.00 USD', extracted: '€38.00 EUR (Unsure)',
+      merchant: 'Taxi Madrid (Handwritten)', confidence: '68% (Below 0.85 Assumption Threshold)',
+      badge: 'UNSURE -> FINANCE', badgeClass: 'b-unsure',
+      file: 'madrid_taxi_handwritten.jpg',
+      vision: 'Low confidence (68%) on smudged handwritten slip in Euros (€38.00 EUR) against $42.00 USD claim with no FX rate.',
+      action: 'Safe Abstain Assumption: Agent did NOT nag employee and did NOT change status. Logged [UNSURE - HUMAN REVIEW] comment and routed to Finance Ops.',
+      slackMsg: null, scanned: false, bucket: 'unsure'
+    }
+  };
+
+  function showToast(text, bgColor) {
+    var t = document.getElementById('toast');
+    t.textContent = text;
+    t.style.background = bgColor || '#059669';
+    t.style.display = 'block';
+    setTimeout(function() {
+      t.style.display = 'none';
+    }, 3500);
+  }
+
+  function updateCounters() {
+    var ids = ['1041', '1042', '1043', '1044', '1045', '1046'];
+    var scanned = 0, verified = 0, needs = 0, unsure = 0;
+    for (var i = 0; i < ids.length; i++) {
+      var item = caseData[ids[i]];
+      if (item.scanned) {
+        scanned++;
+        if (item.bucket === 'verified') verified++;
+        if (item.bucket === 'needs') needs++;
+        if (item.bucket === 'unsure') unsure++;
+      }
+    }
+    document.getElementById('mScannedCount').textContent = scanned + ' / 6';
+    document.getElementById('mVerified').textContent = verified;
+    document.getElementById('mVerified').style.color = verified > 0 ? '#34d399' : '#94a3b8';
+    document.getElementById('mNeeds').textContent = needs;
+    document.getElementById('mNeeds').style.color = needs > 0 ? '#fbbf24' : '#94a3b8';
+    document.getElementById('mUnsure').textContent = unsure;
+    document.getElementById('mUnsure').style.color = unsure > 0 ? '#d8b4fe' : '#94a3b8';
+  }
+
+  function runSingleCase(id) {
+    var c = caseData[id];
+    if (!c) return;
+
+    c.scanned = true;
+
+    var ids = ['1041', '1042', '1043', '1044', '1045', '1046'];
+    for (var i = 0; i < ids.length; i++) {
+      var btn = document.getElementById('btn-' + ids[i]);
+      if (ids[i] === id) {
+        btn.className = 'case-item active';
+      } else {
+        btn.className = 'case-item';
+      }
+    }
+
+    var badgeEl = document.getElementById('badge-' + id);
+    badgeEl.textContent = c.badge;
+    badgeEl.className = 'badge ' + c.badgeClass;
+
+    updateCounters();
+
+    var panel = document.getElementById('inspectorPanel');
+    var slackHtml = '';
+    if (c.slackMsg) {
+      slackHtml = '<div class="insp-box" style="border-color:#7e22ce;">' +
+        '<h4>💬 Automated Slack DM Sent to ' + c.slackHandle + '</h4>' +
+        '<div class="slack-box">"' + c.slackMsg + '"</div>' +
+      '</div>';
+    } else {
+      slackHtml = '<div class="insp-box" style="text-align:center; color:#94a3b8; font-size:12.5px;">' +
+        '🔕 No Slack message sent to employee (Claim is either verified clean, exempt under $30, or safely escalated to Finance Ops).' +
+      '</div>';
+    }
+
+    var bottomBtnHtml = '';
+    if (c.bucket === 'verified') {
+      bottomBtnHtml = '<button class="btn emerald" onclick="approveClaim(\'' + c.id + '\')">✓ Approve Claim #' + c.id + ' in Expense Tool (Human Sign-Off)</button>';
+    } else if (c.bucket === 'needs') {
+      bottomBtnHtml = '<div style="display:flex; gap:10px;">' +
+        '<button class="btn amber" onclick="resendSlack(\'' + c.id + '\')">↺ Send 48h Follow-Up Slack Reminder</button>' +
+        '<button class="btn emerald" onclick="simulateEmployeeFix(\'' + c.id + '\')">✓ Simulate Employee Fixing Receipt</button>' +
+      '</div>';
+    } else {
+      bottomBtnHtml = '<div style="display:flex; gap:10px;">' +
+        '<button class="btn emerald" onclick="approveClaim(\'' + c.id + '\')">✓ Manual Finance Override: Approve</button>' +
+        '<button class="btn amber" onclick="manualRequestInfo(\'' + c.id + '\')">Request FX Proof from Employee</button>' +
+      '</div>';
+    }
+
+    panel.innerHTML =
+      '<div class="insp-header">' +
+        '<div>' +
+          '<span style="font-size:11px; font-weight:700; color:#60a5fa; text-transform:uppercase;">Finance Ops Inspector • Claim #' + c.id + '</span>' +
+          '<h3 style="font-size:17px; font-weight:800; color:#fff; margin-top:3px;">' + c.employee + ' — ' + c.category + '</h3>' +
+        '</div>' +
+        '<span class="badge ' + c.badgeClass + '">' + c.badge + '</span>' +
+      '</div>' +
+
+      '<div class="insp-box">' +
+        '<h4>Receipt vs. Claim Verification</h4>' +
+        '<div class="box-grid">' +
+          '<div class="sub-field"><span>Employee Claimed Amount</span><strong>' + c.claimed + '</strong></div>' +
+          '<div class="sub-field"><span>Receipt Extracted Total</span><strong style="color:' + (c.slackMsg ? '#fbbf24' : '#34d399') + '">' + c.extracted + '</strong></div>' +
+          '<div class="sub-field"><span>Merchant &amp; File</span><strong>' + c.merchant + ' (' + c.file + ')</strong></div>' +
+          '<div class="sub-field"><span>Agent Confidence</span><strong>' + c.confidence + '</strong></div>' +
+        '</div>' +
+        '<div style="font-size:11px; color:#94a3b8; margin-bottom:5px; font-weight:700;">Finding Summary:</div>' +
+        '<div class="audit-text" style="margin-bottom:10px;">' + c.vision + '</div>' +
+        '<div style="font-size:11px; color:#94a3b8; margin-bottom:5px; font-weight:700;">Audit Trail Comment Added to Expense Tool:</div>' +
+        '<div class="audit-text" style="border-left-color:#10b981;">' + c.action + '</div>' +
+      '</div>' +
+
+      slackHtml +
+      '<div style="margin-top:14px;">' + bottomBtnHtml + '</div>';
+
+    if (c.slackMsg) {
+      showToast('💬 Success: Slack message sent to ' + c.slackHandle + ' for Claim #' + c.id + '!', '#059669');
+    } else if (c.bucket === 'verified') {
+      showToast('✓ Claim #' + c.id + ' verified clean (No Slack chase needed)', '#2563eb');
+    } else {
+      showToast('⚠ Claim #' + c.id + ' routed to Finance Ops (No employee nag sent)', '#7e22ce');
+    }
+  }
+
+  function approveClaim(id) {
+    var c = caseData[id];
+    c.badge = 'APPROVED BY FINANCE';
+    c.badgeClass = 'b-verified';
+    document.getElementById('badge-' + id).textContent = c.badge;
+    document.getElementById('badge-' + id).className = 'badge b-verified';
+    showToast('✓ Claim #' + id + ' approved by Finance Ops!', '#059669');
+  }
+
+  function resendSlack(id) {
+    var c = caseData[id];
+    showToast('💬 Follow-up Slack reminder #2 sent to ' + c.slackHandle + ' (Max cap reached)', '#d97706');
+  }
+
+  function simulateEmployeeFix(id) {
+    var c = caseData[id];
+    c.extracted = c.claimed + ' (Re-Uploaded & Matched)';
+    c.badge = 'RECEIPT VERIFIED';
+    c.badgeClass = 'b-verified';
+    c.bucket = 'verified';
+    c.file = 'updated_clear_receipt_' + id + '.pdf';
+    c.vision = 'Employee uploaded replacement receipt via Slack link. Extracted total now matches claim.';
+    c.action = 'Re-verified updated claim: [RECEIPT VERIFIED — Ready for Human Approval].';
+    c.slackMsg = null;
+    runSingleCase(id);
+    showToast('✓ Employee uploaded valid receipt — Claim #' + id + ' is now VERIFIED!', '#059669');
+  }
+
+  function manualRequestInfo(id) {
+    var c = caseData[id];
+    c.badge = 'NEEDS INFO';
+    c.badgeClass = 'b-needs';
+    c.bucket = 'needs';
+    c.slackMsg = 'Hi Liam 👋 — Finance Ops reviewed your €38.00 EUR Madrid Taxi receipt (#1046). Please attach a screenshot of your credit card USD charge ($42.00) so we can approve this.';
+    runSingleCase(id);
+  }
+
+  function resetAllCases() {
+    location.reload();
+  }
+</script>
+</body>
+</html>
